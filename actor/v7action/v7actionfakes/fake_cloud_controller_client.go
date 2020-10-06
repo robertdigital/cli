@@ -1885,6 +1885,17 @@ type FakeCloudControllerClient struct {
 		result1 ccv3.Warnings
 		result2 error
 	}
+	PollJobWithEventStreamStub        func(ccv3.JobURL) chan ccv3.JobEvent
+	pollJobWithEventStreamMutex       sync.RWMutex
+	pollJobWithEventStreamArgsForCall []struct {
+		arg1 ccv3.JobURL
+	}
+	pollJobWithEventStreamReturns struct {
+		result1 chan ccv3.JobEvent
+	}
+	pollJobWithEventStreamReturnsOnCall map[int]struct {
+		result1 chan ccv3.JobEvent
+	}
 	PurgeServiceOfferingStub        func(string) (ccv3.Warnings, error)
 	purgeServiceOfferingMutex       sync.RWMutex
 	purgeServiceOfferingArgsForCall []struct {
@@ -10691,6 +10702,66 @@ func (fake *FakeCloudControllerClient) PollJobForStateReturnsOnCall(i int, resul
 	}{result1, result2}
 }
 
+func (fake *FakeCloudControllerClient) PollJobWithEventStream(arg1 ccv3.JobURL) chan ccv3.JobEvent {
+	fake.pollJobWithEventStreamMutex.Lock()
+	ret, specificReturn := fake.pollJobWithEventStreamReturnsOnCall[len(fake.pollJobWithEventStreamArgsForCall)]
+	fake.pollJobWithEventStreamArgsForCall = append(fake.pollJobWithEventStreamArgsForCall, struct {
+		arg1 ccv3.JobURL
+	}{arg1})
+	fake.recordInvocation("PollJobWithEventStream", []interface{}{arg1})
+	fake.pollJobWithEventStreamMutex.Unlock()
+	if fake.PollJobWithEventStreamStub != nil {
+		return fake.PollJobWithEventStreamStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.pollJobWithEventStreamReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeCloudControllerClient) PollJobWithEventStreamCallCount() int {
+	fake.pollJobWithEventStreamMutex.RLock()
+	defer fake.pollJobWithEventStreamMutex.RUnlock()
+	return len(fake.pollJobWithEventStreamArgsForCall)
+}
+
+func (fake *FakeCloudControllerClient) PollJobWithEventStreamCalls(stub func(ccv3.JobURL) chan ccv3.JobEvent) {
+	fake.pollJobWithEventStreamMutex.Lock()
+	defer fake.pollJobWithEventStreamMutex.Unlock()
+	fake.PollJobWithEventStreamStub = stub
+}
+
+func (fake *FakeCloudControllerClient) PollJobWithEventStreamArgsForCall(i int) ccv3.JobURL {
+	fake.pollJobWithEventStreamMutex.RLock()
+	defer fake.pollJobWithEventStreamMutex.RUnlock()
+	argsForCall := fake.pollJobWithEventStreamArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeCloudControllerClient) PollJobWithEventStreamReturns(result1 chan ccv3.JobEvent) {
+	fake.pollJobWithEventStreamMutex.Lock()
+	defer fake.pollJobWithEventStreamMutex.Unlock()
+	fake.PollJobWithEventStreamStub = nil
+	fake.pollJobWithEventStreamReturns = struct {
+		result1 chan ccv3.JobEvent
+	}{result1}
+}
+
+func (fake *FakeCloudControllerClient) PollJobWithEventStreamReturnsOnCall(i int, result1 chan ccv3.JobEvent) {
+	fake.pollJobWithEventStreamMutex.Lock()
+	defer fake.pollJobWithEventStreamMutex.Unlock()
+	fake.PollJobWithEventStreamStub = nil
+	if fake.pollJobWithEventStreamReturnsOnCall == nil {
+		fake.pollJobWithEventStreamReturnsOnCall = make(map[int]struct {
+			result1 chan ccv3.JobEvent
+		})
+	}
+	fake.pollJobWithEventStreamReturnsOnCall[i] = struct {
+		result1 chan ccv3.JobEvent
+	}{result1}
+}
+
 func (fake *FakeCloudControllerClient) PurgeServiceOffering(arg1 string) (ccv3.Warnings, error) {
 	fake.purgeServiceOfferingMutex.Lock()
 	ret, specificReturn := fake.purgeServiceOfferingReturnsOnCall[len(fake.purgeServiceOfferingArgsForCall)]
@@ -13836,6 +13907,8 @@ func (fake *FakeCloudControllerClient) Invocations() map[string][][]interface{} 
 	defer fake.pollJobMutex.RUnlock()
 	fake.pollJobForStateMutex.RLock()
 	defer fake.pollJobForStateMutex.RUnlock()
+	fake.pollJobWithEventStreamMutex.RLock()
+	defer fake.pollJobWithEventStreamMutex.RUnlock()
 	fake.purgeServiceOfferingMutex.RLock()
 	defer fake.purgeServiceOfferingMutex.RUnlock()
 	fake.resourceMatchMutex.RLock()

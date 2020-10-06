@@ -96,7 +96,6 @@ func (client *Client) GetJob(jobURL JobURL) (Job, Warnings, error) {
 // last case, a JobTimeoutError is returned.
 func (client *Client) PollJob(jobURL JobURL) (Warnings, error) {
 	return client.PollJobForState(jobURL, constant.JobComplete)
-
 }
 
 func (client *Client) PollJobForState(jobURL JobURL, state constant.JobState) (Warnings, error) {
@@ -139,4 +138,51 @@ func (client *Client) PollJobForState(jobURL JobURL, state constant.JobState) (W
 		JobGUID: job.GUID,
 		Timeout: client.jobPollingTimeout,
 	}
+}
+
+type JobEvent struct {
+	State    constant.JobState
+	Err      error
+	Warnings Warnings
+}
+
+func (client *Client) PollJobWithEventStream(jobURL JobURL) chan JobEvent {
+	stream := make(chan JobEvent)
+
+	go func() {
+		startTime := client.clock.Now()
+		for {
+			var event JobEvent
+
+			job, warnings, err := client.GetJob(jobURL)
+			event.Warnings = warnings
+
+			switch {
+			case err != nil:
+				event.Err = err
+			case job.HasFailed():
+				firstError := job.Errors()[0]
+				event.Err = firstError
+			case client.clock.Now().Sub(startTime) > client.jobPollingTimeout:
+				event.Err = ccerror.JobTimeoutError{
+					JobGUID: job.GUID,
+					Timeout: client.jobPollingTimeout,
+				}
+			default:
+				event.State = job.State
+			}
+
+			stream <- event
+
+			if event.Err != nil || job.IsComplete() {
+				break
+			}
+
+			time.Sleep(client.jobPollingInterval)
+		}
+
+		close(stream)
+	}()
+
+	return stream
 }

@@ -1,7 +1,9 @@
 package v7
 
 import (
-	"code.cloudfoundry.org/cli/actor/v7action"
+	"fmt"
+
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv3/constant"
 	"code.cloudfoundry.org/cli/command/flag"
 )
 
@@ -35,17 +37,48 @@ func (cmd DeleteServiceCommand) Execute(args []string) error {
 		return err
 	}
 
-	state, warnings, err := cmd.Actor.DeleteServiceInstance(
+	stream, warnings, err := cmd.Actor.DeleteServiceInstance(
 		string(cmd.RequiredArgs.ServiceInstance),
 		cmd.Config.TargetedSpace().GUID,
-		cmd.Wait,
 	)
 	cmd.UI.DisplayWarnings(warnings)
 	if err != nil {
 		return err
 	}
 
-	cmd.displayState(state)
+	var (
+		previousState constant.JobState
+		gone          bool
+	)
+
+	for event := range stream {
+		if event.State != previousState {
+			cmd.UI.DisplayNewline()
+			cmd.UI.DisplayText("The job has changed to {{.State}} state.", map[string]interface{}{"State": event.State})
+			previousState = event.State
+		} else {
+			fmt.Fprint(cmd.UI.Writer(), ".")
+		}
+
+		switch {
+
+		case event.State == constant.JobComplete:
+			gone = true
+			break
+		case event.State == constant.JobPolling && !cmd.Wait:
+			break
+		}
+	}
+
+	cmd.UI.DisplayNewline()
+	switch gone {
+	case true:
+		cmd.UI.DisplayText("Service instance {{.ServiceInstanceName}} deleted.", cmd.serviceInstanceName())
+	default:
+		cmd.UI.DisplayText("Delete in progress. Use 'cf services' or 'cf service {{.ServiceInstanceName}}' to check operation status.", cmd.serviceInstanceName())
+	}
+	cmd.UI.DisplayOK()
+
 	return nil
 }
 
@@ -83,19 +116,6 @@ func (cmd DeleteServiceCommand) displayPrompt() (bool, error) {
 	}
 
 	return delete, nil
-}
-
-func (cmd DeleteServiceCommand) displayState(state v7action.ServiceInstanceDeleteState) {
-	cmd.UI.DisplayNewline()
-	switch state {
-	case v7action.ServiceInstanceDidNotExist:
-		cmd.UI.DisplayText("Service instance {{.ServiceInstanceName}} did not exist.", cmd.serviceInstanceName())
-	case v7action.ServiceInstanceGone:
-		cmd.UI.DisplayText("Service instance {{.ServiceInstanceName}} deleted.", cmd.serviceInstanceName())
-	case v7action.ServiceInstanceDeleteInProgress:
-		cmd.UI.DisplayText("Delete in progress. Use 'cf services' or 'cf service {{.ServiceInstanceName}}' to check operation status.", cmd.serviceInstanceName())
-	}
-	cmd.UI.DisplayOK()
 }
 
 func (cmd DeleteServiceCommand) serviceInstanceName() map[string]interface{} {
